@@ -5,11 +5,13 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF  # For key derivation
 from cryptography.hazmat.primitives import hashes  # For HKDF hash
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # For AES-GCM encryption/decryption
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat  # For public key serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519  # For Ed25519 digital signatures
+import time  # For timestamp
 
 HOST = '127.0.0.1'  # Server will listen on localhost
 PORT = 65432         # Port to listen on
 
-# 1. Generate X25519 keypair for the server
+# 1. Generate X25519 keypair for the server (for key exchange)
 private_key = x25519.X25519PrivateKey.generate()  # Server's private key
 public_key = private_key.public_key()             # Server's public key
 public_bytes = public_key.public_bytes(Encoding.Raw, PublicFormat.Raw)  # Serialize public key to bytes
@@ -26,7 +28,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         print('---------------- CONNECTION ESTABLISHED ----------------')
         print(f'Connected by: {addr}\n')
 
-        # 2. Receive the client's public key (32 bytes for X25519)
+        # 2. Receive the client's X25519 public key (32 bytes for X25519)
         client_pub_bytes = conn.recv(32)  # Receive client's public key
         print('--- Key Exchange ---')
         print(f"Received client's public key: {client_pub_bytes.hex()}")
@@ -56,26 +58,34 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         key = hkdf.derive(shared_secret)  # Derive AES key
         print(f"Derived AES-256 key:         {key.hex()}\n")
 
-        # 7. Receive the nonce (12 bytes for AES-GCM)
-        nonce = conn.recv(12)  # Receive 12-byte nonce
-        print('--- Message Reception ---')
-        print(f"Received nonce:              {nonce.hex()}")
+        # 7. Receive the Ed25519 public key (32 bytes)
+        verify_bytes = conn.recv(32)
+        print('--- Signature Verification ---')
+        print(f"Received Ed25519 public key:  {verify_bytes.hex()}")
+        verify_key = ed25519.Ed25519PublicKey.from_public_bytes(verify_bytes)
 
-        # 8. Receive the ciphertext length (2 bytes, big endian)
-        ct_len = int.from_bytes(conn.recv(2), 'big')  # Receive ciphertext length
+        # 8. Receive the signature (64 bytes)
+        signature = conn.recv(64)
+        print(f"Received signature:           {signature.hex()}")
 
-        # 9. Receive the ciphertext
-        ciphertext = conn.recv(ct_len)  # Receive ciphertext
-        print(f"Received ciphertext:         {ciphertext.hex()}\n")
+        # 9. Receive the message length (2 bytes, big endian)
+        msg_len = int.from_bytes(conn.recv(2), 'big')
+        # 10. Receive the plaintext message
+        message = conn.recv(msg_len)
+        print(f"Received message:             {message.decode()}\n")
 
-        # 10. Decrypt the message
+        # 11. Verify the signature
         try:
-            aesgcm = AESGCM(key)  # Create AESGCM object with derived key
-            plaintext = aesgcm.decrypt(nonce, ciphertext, b'')  # Decrypt ciphertext
-            print('--- Decryption Result ---')
-            print('Decrypted message from client:')
-            print(f'    "{plaintext.decode()}"\n')
-            print('SUCCESS: Secure key exchange and message decryption worked!')
-            print('==========================================================\n')
+            verify_key.verify(signature, message)
+            print('Signature is VALID. Message is authentic and non-repudiable.')
+            verification_status = 'VALID'
         except Exception as e:
-            print('Decryption failed:', e) 
+            print('Signature is INVALID!')
+            verification_status = 'INVALID'
+
+        # 12. Log the message, signature, public key, and timestamp to a file
+        log_entry = f"{time.strftime('%Y-%m-%d %H:%M:%S')} | {addr[0]} | {message.decode()} | {signature.hex()} | {verify_bytes.hex()} | {verification_status}\n"
+        with open('message_log.txt', 'a') as log:
+            log.write(log_entry)
+        print('Message logged to message_log.txt')
+        print('==========================================================\n') 
