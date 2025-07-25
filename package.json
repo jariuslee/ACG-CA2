@@ -1,0 +1,15 @@
+{
+  "name": "acg-ca2",
+  "version": "1.0.0",
+  "description": "This project is a simple, secure messaging service using Python, Flask, and cryptography. It allows multiple clients (e.g., Alice and Bob) to send and receive messages via a web interface, with the server running on a host machine.",
+  "main": "index.js",
+  "scripts": {
+    "init_tables": "node web_mysql_chat/configs/createSchema.js && node web_mysql_chat/configs/initTables.js"
+  },
+  "author": "Jarius LEE",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "mysql2": "^3.14.2"
+  }
+}
