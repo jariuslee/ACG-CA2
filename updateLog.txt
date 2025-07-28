@@ -1,0 +1,14 @@
+# Phase 1 Requirements - Basic Infrastructure Only
+# IT2504 Applied Cryptography Assignment 2
+
+# Core requirements for Phase 1
+mysql-connector-python>=8.0.33    # MySQL database connectivity
+
+# Optional for better development experience
+colorama>=0.4.6                   # Colored terminal output (optional)
+
+# Note: No cryptography libraries needed for Phase 1
+# We'll add cryptography>=41.0.0 in Phase 2
+
+
+
