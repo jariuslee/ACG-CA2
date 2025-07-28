@@ -10,7 +10,7 @@ Goal: Core infrastructure with MySQL and basic multi-client support
 - Username uniqueness validation
 - Multi-client connection handling
 
-Author: Jarius Lee Jie Ren
+Authors: [Your Names Here]
 """
 
 import socket
@@ -24,11 +24,11 @@ from datetime import datetime
 
 # Configuration
 CONFIG = {
-    'HOST': '127.0.0.1',
+    'HOST': '0.0.0.0',
     'PORT': 65432,
     'DB_HOST': 'localhost',
     'DB_USER': 'root',
-    'DB_PASSWORD': '1qwer$#@',  
+    'DB_PASSWORD': '1qwer$#@!',  # Update with your MySQL password
     'DB_NAME': 'acg_ca2',
     'MAX_CLIENTS': 5
 }

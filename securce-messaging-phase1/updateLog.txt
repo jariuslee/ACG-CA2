@@ -9,6 +9,3 @@ colorama>=0.4.6                   # Colored terminal output (optional)
 
 # Note: No cryptography libraries needed for Phase 1
 # We'll add cryptography>=41.0.0 in Phase 2
-
-
-

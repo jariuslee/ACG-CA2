@@ -1,0 +1,340 @@
+# Phase 1 - Quick Startup Guide
+**IT2504 Applied Cryptography Assignment 2**
+
+## 🚀 Server Startup (Laptop)
+
+### **Step 1: Open VSC Terminal**
+```powershell
+# Navigate to project folder
+cd C:\Users\user\OneDrive\Pictures\Documents\Jarius\DCDF\Year_2\ACG\ACG-CA2\secure-messaging-phase1
+
+# Activate virtual environment
+venv\Scripts\activate
+
+# Verify you see (venv) in prompt
+```
+
+### **Step 2: Start Server**
+```powershell
+# Start the Phase 1 server
+python phase1_server.py
+```
+
+**Expected Output:**
+```
+============================================================
+🚀 PHASE 1: BASIC MESSAGING SERVER
+============================================================
+📍 Server Address: 0.0.0.0:65432
+🗄️  Database: acg_ca2
+👥 Max Clients: 5
+📊 Features: Registration, Login, Multi-client
+============================================================
+✅ Connected to database 'acg_ca2'
+✅ Database tables created successfully
+🚀 Server started on 0.0.0.0:65432
+```
+
+**✅ Leave this terminal running!**
+
+---
+
+## 💻 Client Startup (Laptop - Second Terminal)
+
+### **Step 1: Open New VSC Terminal**
+```powershell
+# Click the + button in VSC terminal tabs
+# Or use Terminal > New Terminal
+
+# Activate virtual environment
+venv\Scripts\activate
+```
+
+### **Step 2: Start Local Client**
+```powershell
+# Start the client
+python phase1_client.py
+```
+
+### **Step 3: Test Local Client**
+```
+Choose mode:
+1. Single client mode
+2. Multi-client test mode
+Select mode (1-2): 1
+
+📱 CLIENT MENU
+👤 Not logged in
+1. 📝 Register
+2. 🔑 Login
+3. 👥 Get online users
+4. 🏓 Ping server
+5. ❌ Exit
+
+Select option (1-5): 1
+
+📝 USER REGISTRATION
+==============================
+Username (3-20 chars): alice
+Password (6+ chars): password123
+```
+
+**Expected:** `✅ User registered successfully`
+
+**Then login:**
+```
+Select option (1-5): 2
+Username: alice
+Password: password123
+```
+
+**Expected:** `✅ Welcome back, alice!`
+
+---
+
+## 🔧 VM Client Startup (VM 1)
+
+### **Step 1: Setup VM Environment**
+```bash
+# On your VM
+cd secure-messaging-phase1
+
+# Activate virtual environment (if you have one)
+source venv/bin/activate
+# OR if no venv, just use system Python
+```
+
+### **Step 2: Verify Client Configuration**
+Make sure your VM's `phase1_client.py` has:
+```python
+CONFIG = {
+    'HOST': '192.168.21.1',  # Your laptop's VMware Host-Only IP
+    'PORT': 65432,
+    'TIMEOUT': 10
+}
+```
+
+### **Step 3: Start VM Client**
+```bash
+python phase1_client.py
+```
+
+### **Step 4: Test VM Client**
+```
+Select mode (1-2): 1
+Select option (1-5): 1
+
+Username (3-20 chars): bob
+Password (6+ chars): password123
+```
+
+**Expected:** `✅ User registered successfully`
+
+---
+
+## 🔧 VM Client Startup (VM 2)
+
+### **Same as VM 1, but register different user:**
+```bash
+python phase1_client.py
+
+# Register as:
+Username: charlie
+Password: password123
+```
+
+---
+
+## 🧪 Multi-Client Testing Commands
+
+### **Test Online Users (Any Client):**
+```
+Select option (1-5): 3
+```
+
+**Expected Output:**
+```
+👥 Online Users (3):
+   1. alice
+   2. bob
+   3. charlie
+```
+
+### **Test Server Ping (Any Client):**
+```
+Select option (1-5): 4
+```
+
+**Expected:** `✅ Pong! Latency: X.XXms`
+
+---
+
+## 🔄 Complete Startup Sequence
+
+### **Order of Operations:**
+1. **Start Server (Laptop VSC Terminal 1)**
+   ```powershell
+   venv\Scripts\activate
+   python phase1_server.py
+   ```
+
+2. **Start Local Client (Laptop VSC Terminal 2)**
+   ```powershell
+   venv\Scripts\activate
+   python phase1_client.py
+   # Register: alice / password123
+   ```
+
+3. **Start VM1 Client**
+   ```bash
+   python phase1_client.py
+   # Register: bob / password123
+   ```
+
+4. **Start VM2 Client**
+   ```bash
+   python phase1_client.py
+   # Register: charlie / password123
+   ```
+
+5. **Test Online Users (Any Client)**
+   ```
+   Select option (1-5): 3
+   # Should show all 3 users
+   ```
+
+---
+
+## 🐛 Quick Troubleshooting Commands
+
+### **If Server Won't Start:**
+```powershell
+# Check if port is in use
+netstat -an | findstr :65432
+
+# If port is busy, change port in phase1_server.py:
+'PORT': 65433,
+```
+
+### **If VM Can't Connect:**
+```bash
+# Test network connectivity
+ping 192.168.21.1
+
+# If ping fails, check VMware network settings:
+# VM Settings > Network > Host-only mode
+```
+
+### **If Database Connection Fails:**
+```powershell
+# Test MySQL connection
+mysql -u root -p
+
+# Check if database exists
+mysql -u root -p -e "USE acg_ca2; SHOW TABLES;"
+```
+
+---
+
+## 📋 Quick Commands Reference
+
+### **Server Commands:**
+```powershell
+# Start server
+python phase1_server.py
+
+# Stop server
+Ctrl+C
+```
+
+### **Client Commands:**
+```bash
+# Start client
+python phase1_client.py
+
+# Quick registration test
+# Mode 1 > Option 1 > username/password
+
+# Quick login test  
+# Mode 1 > Option 2 > username/password
+
+# Check online users
+# Mode 1 > Option 3
+
+# Test connectivity
+# Mode 1 > Option 4
+
+# Exit client
+# Mode 1 > Option 5
+```
+
+### **Database Commands:**
+```sql
+-- Check registered users
+USE acg_ca2;
+SELECT * FROM users;
+
+-- Check active sessions
+SELECT * FROM sessions WHERE is_active = TRUE;
+
+-- Check connection logs
+SELECT * FROM connection_log ORDER BY timestamp DESC LIMIT 10;
+```
+
+---
+
+## ✅ Success Verification Checklist
+
+**Server Running Successfully:**
+- [ ] Shows "Server started on 0.0.0.0:65432"
+- [ ] No error messages in terminal
+- [ ] Database connection confirmed
+
+**Local Client Working:**
+- [ ] Can register new user
+- [ ] Can login successfully  
+- [ ] Shows "Welcome back, [username]!"
+
+**VM Clients Working:**
+- [ ] Can connect to laptop server
+- [ ] Can register different usernames
+- [ ] Can see other online users
+
+**Multi-Client Test:**
+- [ ] All 3 clients show in online users list
+- [ ] Server shows connections from different IPs
+- [ ] Ping works from all clients
+
+**Database Verification:**
+- [ ] Users table has 3 entries
+- [ ] Sessions table has 3 active sessions
+- [ ] Connection logs show all activities
+
+---
+
+## 🎯 Ready for Demo
+
+**When everything is working, you should see:**
+
+**Server Terminal:**
+```
+🔗 New connection from 127.0.0.1
+🔗 New connection from 192.168.21.x  
+🔗 New connection from 192.168.21.y
+✅ User 'alice' registered with ID 1
+✅ User 'bob' registered with ID 2
+✅ User 'charlie' registered with ID 3
+```
+
+**Each Client Shows:**
+```
+👤 Logged in as: [username]
+👥 Online Users (3): alice, bob, charlie
+```
+
+**Database Contains:**
+- 3 users with different IPs
+- 3 active sessions
+- Complete audit trail
+
+**🎉 Phase 1 Complete and Demo-Ready!** 🚀
