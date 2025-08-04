@@ -205,34 +205,38 @@ class DatabaseManager:
             return False
     
     def get_messages(self, user_id):
-        """Get messages for a user."""
+        """Get messages for a user - both sent and received messages."""
         try:
             cursor = self.connection.cursor()
             
-            # Get messages where user is the recipient
+            # Get messages where user is EITHER sender OR recipient
             cursor.execute("""
-                SELECT m.message_id, m.sender_id, m.encrypted_message, m.message_signature, 
-                       m.nonce, m.timestamp, u.username as sender_username
+                SELECT m.message_id, m.sender_id, m.recipient_id, m.encrypted_message, 
+                       m.message_signature, m.nonce, m.timestamp, 
+                       sender.username as sender_username, recipient.username as recipient_username
                 FROM messages m
-                JOIN users u ON m.sender_id = u.user_id
-                WHERE m.recipient_id = %s
+                JOIN users sender ON m.sender_id = sender.user_id
+                JOIN users recipient ON m.recipient_id = recipient.user_id
+                WHERE m.sender_id = %s OR m.recipient_id = %s
                 ORDER BY m.timestamp ASC
-            """, (user_id,))
+            """, (user_id, user_id))
             
             messages = []
             for row in cursor.fetchall():
                 messages.append({
                     'message_id': row[0],
                     'sender_id': row[1],
-                    'encrypted_message': row[2],
-                    'signature': row[3],
-                    'nonce': row[4],
-                    'timestamp': row[5].isoformat() if row[5] else None,
-                    'sender_username': row[6]
+                    'recipient_id': row[2],
+                    'encrypted_message': row[3],
+                    'signature': row[4],
+                    'nonce': row[5],
+                    'timestamp': row[6].isoformat() if row[6] else None,
+                    'sender_username': row[7],
+                    'recipient_username': row[8]
                 })
             
             cursor.close()
-            print(f"Retrieved {len(messages)} messages for user {user_id}")
+            print(f"Retrieved {len(messages)} messages for user {user_id} (both sent and received)")
             return messages
             
         except Error as e:
