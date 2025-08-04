@@ -1,0 +1,12 @@
+# requirements.txt - Simplified Server Dependencies
+# IT2504 Applied Cryptography Assignment 2
+
+# Flask web framework
+Flask==2.3.3
+
+# MySQL database connector
+mysql-connector-python==8.1.0
+
+# Main cryptography library (contains all 4 required algorithms)
+cryptography==41.0.4
+
