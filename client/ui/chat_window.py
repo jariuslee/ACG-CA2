@@ -33,10 +33,10 @@ class ChatWindow(QMainWindow):
         self.setup_ui()
         self.load_users()
         
-        # Set up refresh timer for user list
+        # Set up refresh timer for user list and messages
         self.refresh_timer = QTimer()
-        self.refresh_timer.timeout.connect(self.refresh_users)
-        self.refresh_timer.start(10000)  # Refresh every 10 seconds
+        self.refresh_timer.timeout.connect(self.refresh_data)
+        self.refresh_timer.start(5000)  # Refresh every 5 seconds
     
     def setup_ui(self):
         """Set up the main chat interface."""
@@ -283,6 +283,27 @@ class ChatWindow(QMainWindow):
             item.setData(Qt.UserRole, user)  # Store user data
             self.users_list_widget.addItem(item)
     
+    def add_received_message(self, sender: str, message: str, timestamp: str):
+        """Add received message to the chat display."""
+        formatted_message = f"""
+        <div style="margin: 8px 0; padding: 8px; background-color: #f0fff0; 
+             border-left: 3px solid #28a745; border-radius: 4px;">
+            <div style="font-weight: bold; color: #28a745; font-size: 12px;">
+                📥 {sender} - {timestamp}
+            </div>
+            <div style="margin-top: 4px; color: #333; font-size: 13px;">
+                {message}
+            </div>
+        </div>
+        """
+        
+        # Add to display
+        cursor = self.messages_display.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertHtml(formatted_message)
+        self.messages_display.setTextCursor(cursor)
+        self.messages_display.ensureCursorVisible()
+    
     def refresh_users(self):
         """Refresh the users list."""
         self.load_users()
@@ -321,7 +342,131 @@ class ChatWindow(QMainWindow):
         self.add_system_message(f"🔐 End-to-end encrypted chat with {username}")
         self.add_system_message("Messages are encrypted with AES-256-GCM and signed with ED25519")
         
+        # Load existing messages with this user
+        self.load_messages_with_user(username)
+        
         self.show_status(f"Ready to chat with {username}")
+    
+    def load_messages_with_user(self, username: str):
+        """Load and decrypt messages with specific user."""
+        try:
+            # Get all my messages
+            all_messages = self.network_client.get_my_messages()
+            
+            # Filter messages from this specific user
+            user_messages = [msg for msg in all_messages if msg['sender_username'] == username]
+            
+            if not user_messages:
+                self.add_system_message("No previous messages with this user")
+                return
+            
+            self.add_system_message(f"Loading {len(user_messages)} previous messages...")
+            
+            # Get sender's public keys for decryption
+            sender_keys = self.network_client.get_user_public_keys(username)
+            if not sender_keys:
+                self.add_system_message("⚠️ Cannot load messages - sender's keys not available")
+                return
+            
+            # Get my private keys for decryption
+            my_crypto_keys = self.key_manager.get_my_encryption_keys(self.username)
+            if not my_crypto_keys:
+                self.add_system_message("⚠️ Cannot decrypt messages - your keys not available")
+                return
+            
+            # Decrypt and display each message
+            for msg in reversed(user_messages):  # Show oldest first
+                try:
+                    # Decrypt the message
+                    decrypted_message, signature_valid = self.crypto.process_message_from_server(
+                        msg['encrypted_message'],
+                        msg['nonce'],
+                        msg['signature'],
+                        sender_keys['x25519_public_key'],
+                        my_crypto_keys['x25519_private'],
+                        sender_keys['ed25519_public_key']
+                    )
+                    
+                    # Add to display
+                    timestamp = msg.get('timestamp', 'Unknown time')
+                    if signature_valid:
+                        self.add_received_message(username, decrypted_message, timestamp)
+                    else:
+                        self.add_system_message(f"⚠️ Message from {username} failed signature verification!")
+                        
+                except Exception as e:
+                    self.add_system_message(f"❌ Failed to decrypt message from {username}: {str(e)}")
+            
+            self.add_system_message("📨 Message history loaded")
+            
+        except Exception as e:
+            self.add_system_message(f"❌ Error loading messages: {str(e)}")
+    
+    def refresh_data(self):
+        """Refresh both users and messages."""
+        if self.current_chat_user:
+            # Check for new messages from current chat user
+            self.check_for_new_messages()
+        
+        # Refresh user list less frequently
+        import time
+        if not hasattr(self, 'last_user_refresh') or time.time() - self.last_user_refresh > 30:
+            self.refresh_users()
+            self.last_user_refresh = time.time()
+    
+    def check_for_new_messages(self):
+        """Check for new messages from current chat user."""
+        if not self.current_chat_user:
+            return
+        
+        try:
+            username = self.current_chat_user['username']
+            
+            # Get latest messages
+            all_messages = self.network_client.get_my_messages()
+            user_messages = [msg for msg in all_messages if msg['sender_username'] == username]
+            
+            # Check if we have new messages (this is a simple check - in production you'd track message IDs)
+            if not hasattr(self, 'last_message_count'):
+                self.last_message_count = {}
+            
+            current_count = len(user_messages)
+            last_count = self.last_message_count.get(username, 0)
+            
+            if current_count > last_count:
+                # We have new messages
+                new_messages = user_messages[:current_count - last_count]
+                
+                # Get keys for decryption
+                sender_keys = self.network_client.get_user_public_keys(username)
+                my_crypto_keys = self.key_manager.get_my_encryption_keys(self.username)
+                
+                if sender_keys and my_crypto_keys:
+                    for msg in reversed(new_messages):  # Process newest first, display in order
+                        try:
+                            decrypted_message, signature_valid = self.crypto.process_message_from_server(
+                                msg['encrypted_message'],
+                                msg['nonce'],
+                                msg['signature'],
+                                sender_keys['x25519_public_key'],
+                                my_crypto_keys['x25519_private'],
+                                sender_keys['ed25519_public_key']
+                            )
+                            
+                            if signature_valid:
+                                timestamp = msg.get('timestamp', 'Just now')
+                                self.add_received_message(username, decrypted_message, timestamp)
+                            else:
+                                self.add_system_message(f"⚠️ New message failed signature verification!")
+                                
+                        except Exception as e:
+                            self.add_system_message(f"❌ Failed to decrypt new message: {str(e)}")
+                
+                self.last_message_count[username] = current_count
+            
+        except Exception as e:
+            # Don't spam errors for refresh issues
+            pass
     
     def send_message(self):
         """Send encrypted message."""
@@ -335,6 +480,8 @@ class ChatWindow(QMainWindow):
         recipient_username = self.current_chat_user['username']
         recipient_id = self.current_chat_user['user_id']
         
+        print(f"🔍 DEBUG: Sending to {recipient_username} (ID: {recipient_id})")
+        
         try:
             self.show_status("Encrypting message...")
             self.send_button.setEnabled(False)
@@ -346,6 +493,8 @@ class ChatWindow(QMainWindow):
                 self.send_button.setEnabled(True)
                 return
             
+            print(f"🔍 DEBUG: Got recipient keys: {list(recipient_keys.keys())}")
+            
             # Get my private keys
             my_crypto_keys = self.key_manager.get_my_encryption_keys(self.username)
             if not my_crypto_keys:
@@ -353,7 +502,10 @@ class ChatWindow(QMainWindow):
                 self.send_button.setEnabled(True)
                 return
             
+            print(f"🔍 DEBUG: Got my keys: {list(my_crypto_keys.keys())}")
+            
             # Encrypt and sign the message
+            print("🔍 DEBUG: Encrypting message...")
             encrypted_package = self.crypto.prepare_message_for_server(
                 message_text,
                 recipient_keys['x25519_public_key'],
@@ -361,15 +513,20 @@ class ChatWindow(QMainWindow):
                 my_crypto_keys['ed25519_private']
             )
             
+            print(f"🔍 DEBUG: Encryption complete, package keys: {list(encrypted_package.keys())}")
+            
             self.show_status("Sending encrypted message...")
             
             # Send to server
+            print(f"🔍 DEBUG: Sending to server...")
             success, response = self.network_client.send_encrypted_message(
                 recipient_username,
                 encrypted_package['encrypted_message'],
                 encrypted_package['signature'],
                 encrypted_package['nonce']
             )
+            
+            print(f"🔍 DEBUG: Server response - Success: {success}, Response: {response}")
             
             if success:
                 # Add to display
@@ -381,6 +538,7 @@ class ChatWindow(QMainWindow):
                 self.show_status("Failed to send message")
             
         except Exception as e:
+            print(f"🔍 DEBUG: Exception during send: {e}")
             QMessageBox.critical(self, "Encryption Error", f"Failed to encrypt message: {str(e)}")
             self.show_status("Encryption failed")
         

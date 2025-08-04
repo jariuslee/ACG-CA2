@@ -1,8 +1,8 @@
 {
   "username": "Jarius",
-  "ed25519_private": "+PxYBbia9reVu9vKNe+608V6U8v4/fYq8xZnN+ekL60=",
-  "x25519_private": "ONJXPEmmMUfw/pvFmqnVGhzlPM9jNiIH5Hd2wS5UEkQ=",
-  "ed25519_public": "fOK9J5juKwRyrN7SxU9X3Zb2MXPRAbLhlOkkuhHNqTc=",
-  "x25519_public": "/E5XZNRVQs05Duo0u2m6Q+ETAJUSeEO3Hu6wG7JBaDY=",
-  "created_at": "<function getctime at 0x00000234240BF920>"
+  "ed25519_private": "hOwVTeDeHOV3zMaOe6Ol2twuQkLtLftJx8rarnbd96Q=",
+  "x25519_private": "qPox8JmsDEdiKh85iZ2ACAbOta3dY4SOllWYUed6rXo=",
+  "ed25519_public": "euPt+VQNDugeT6uvoVP+79JmaLGAgwgW+7eIKJtZZrs=",
+  "x25519_public": "q6XzvRcexEeWHC2C/SXI/ovPZh73c9AXoHshm+f1YnA=",
+  "created_at": "<function getctime at 0x000001309B8AF920>"
 }

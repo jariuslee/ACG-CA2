@@ -1,4 +1,4 @@
-# app.py - Simplified Flask Server
+# app.py - Fixed Flask Server with Proper Message Endpoints
 # IT2504 Applied Cryptography Assignment 2
 
 from flask import Flask, request, jsonify, session
@@ -49,6 +49,12 @@ def login():
     else:
         return jsonify({'error': 'Invalid credentials'}), 401
 
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    """Logout user."""
+    session.clear()
+    return jsonify({'message': 'Logout successful'}), 200
+
 @app.route('/api/users', methods=['GET'])
 def get_users():
     """Get list of users."""
@@ -90,26 +96,57 @@ def store_keys():
     else:
         return jsonify({'error': 'Failed to store keys'}), 500
 
-@app.route('/api/messages', methods=['POST'])
-def send_message():
-    """Store encrypted message."""
+# FIXED: Handle both GET and POST on /api/messages properly
+@app.route('/api/messages', methods=['GET', 'POST'])
+def messages():
+    """Handle messages - GET to retrieve, POST to send."""
     if 'user_id' not in session:
         return jsonify({'error': 'Not logged in'}), 401
     
-    data = request.get_json()
-    recipient_id = data.get('recipient_id')
-    encrypted_message = data.get('encrypted_message')
-    signature = data.get('signature')
-    nonce = data.get('nonce')
+    if request.method == 'GET':
+        # Get messages for current user
+        try:
+            print(f"Getting messages for user {session['user_id']}")
+            messages = db.get_messages(session['user_id'])
+            print(f"Found {len(messages)} messages")
+            return jsonify({'messages': messages}), 200
+        except Exception as e:
+            print(f"❌ Error getting messages: {e}")
+            return jsonify({'error': 'Failed to get messages'}), 500
     
-    success = db.store_message(
-        session['user_id'], recipient_id, encrypted_message, signature, nonce
-    )
-    
-    if success:
-        return jsonify({'message': 'Message sent'}), 200
-    else:
-        return jsonify({'error': 'Failed to send message'}), 500
+    elif request.method == 'POST':
+        # Send/store new message
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No data provided'}), 400
+                
+            recipient_id = data.get('recipient_id')
+            encrypted_message = data.get('encrypted_message')
+            signature = data.get('signature')
+            nonce = data.get('nonce')
+            
+            # Validate required fields
+            if not all([recipient_id, encrypted_message, signature, nonce]):
+                return jsonify({'error': 'Missing required fields'}), 400
+            
+            print(f"📤 Storing message from user {session['user_id']} to user {recipient_id}")
+            print(f"Data lengths: msg={len(encrypted_message)}, sig={len(signature)}, nonce={len(nonce)}")
+            
+            success = db.store_message(
+                session['user_id'], recipient_id, encrypted_message, signature, nonce
+            )
+            
+            if success:
+                print("✅ Message stored successfully")
+                return jsonify({'message': 'Message sent successfully'}), 200
+            else:
+                print("❌ Failed to store message in database")
+                return jsonify({'error': 'Failed to send message'}), 500
+                
+        except Exception as e:
+            print(f"❌ Error storing message: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
     if db.connect():

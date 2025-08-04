@@ -1,4 +1,4 @@
-# database.py - Simplified MySQL Database Operations
+# database.py - Complete MySQL Database Operations
 # IT2504 Applied Cryptography Assignment 2
 
 import mysql.connector
@@ -102,6 +102,10 @@ class DatabaseManager:
         try:
             cursor = self.connection.cursor()
             
+            # First, delete any existing keys for this user
+            cursor.execute("DELETE FROM public_keys WHERE user_id = %s", (user_id,))
+            
+            # Insert new keys
             cursor.execute(
                 "INSERT INTO public_keys (user_id, ed25519_public_key, x25519_public_key) VALUES (%s, %s, %s)",
                 (user_id, ed25519_key, x25519_key)
@@ -114,6 +118,8 @@ class DatabaseManager:
             
         except Error as e:
             print(f"Error storing keys: {e}")
+            if self.connection:
+                self.connection.rollback()
             return False
     
     def get_public_keys(self, username):
@@ -170,6 +176,18 @@ class DatabaseManager:
         try:
             cursor = self.connection.cursor()
             
+            # Validate that both users exist
+            cursor.execute("SELECT user_id FROM users WHERE user_id = %s", (sender_id,))
+            if not cursor.fetchone():
+                print(f"Error: Sender user_id {sender_id} does not exist")
+                return False
+            
+            cursor.execute("SELECT user_id FROM users WHERE user_id = %s", (recipient_id,))
+            if not cursor.fetchone():
+                print(f"Error: Recipient user_id {recipient_id} does not exist")
+                return False
+            
+            # Store the message
             cursor.execute("""
                 INSERT INTO messages (sender_id, recipient_id, encrypted_message, message_signature, nonce) 
                 VALUES (%s, %s, %s, %s, %s)
@@ -177,8 +195,46 @@ class DatabaseManager:
             
             self.connection.commit()
             cursor.close()
+            print(f"Message stored: sender={sender_id}, recipient={recipient_id}")
             return True
             
         except Error as e:
             print(f"Error storing message: {e}")
+            if self.connection:
+                self.connection.rollback()
             return False
+    
+    def get_messages(self, user_id):
+        """Get messages for a user."""
+        try:
+            cursor = self.connection.cursor()
+            
+            # Get messages where user is the recipient
+            cursor.execute("""
+                SELECT m.message_id, m.sender_id, m.encrypted_message, m.message_signature, 
+                       m.nonce, m.timestamp, u.username as sender_username
+                FROM messages m
+                JOIN users u ON m.sender_id = u.user_id
+                WHERE m.recipient_id = %s
+                ORDER BY m.timestamp ASC
+            """, (user_id,))
+            
+            messages = []
+            for row in cursor.fetchall():
+                messages.append({
+                    'message_id': row[0],
+                    'sender_id': row[1],
+                    'encrypted_message': row[2],
+                    'signature': row[3],
+                    'nonce': row[4],
+                    'timestamp': row[5].isoformat() if row[5] else None,
+                    'sender_username': row[6]
+                })
+            
+            cursor.close()
+            print(f"Retrieved {len(messages)} messages for user {user_id}")
+            return messages
+            
+        except Error as e:
+            print(f"Error getting messages: {e}")
+            return []

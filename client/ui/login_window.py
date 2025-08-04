@@ -194,11 +194,17 @@ class LoginWindow(QMainWindow):
         """Generate and upload user's cryptographic keys."""
         try:
             self.show_status("Generating encryption keys...")
+            print(f"🔑 Starting key generation for user: {username}")
             
             # Generate keys locally
             public_keys = self.key_manager.generate_keys_for_user(username)
+            print(f"🔑 Local key generation completed")
+            print(f"🔑 Public keys generated: {list(public_keys.keys())}")
+            print(f"🔑 ED25519 key: {public_keys['ed25519_public_key'][:50]}...")
+            print(f"🔑 X25519 key: {public_keys['x25519_public_key'][:50]}...")
             
             self.show_status("Uploading public keys to server...")
+            print(f"🔑 Uploading keys to server...")
             
             # Upload public keys to server
             success, message = self.network_client.upload_my_public_keys(
@@ -206,8 +212,19 @@ class LoginWindow(QMainWindow):
                 public_keys['x25519_public_key']
             )
             
+            print(f"🔑 Upload result: success={success}, message={message}")
+            
             if success:
                 self.show_status("Keys generated successfully!", False)
+                
+                # Test if keys were actually stored
+                print(f"🔑 Testing key retrieval...")
+                test_keys = self.network_client.get_user_public_keys(username)
+                if test_keys:
+                    print(f"🔑 ✅ Keys successfully stored and retrieved from server!")
+                else:
+                    print(f"🔑 ❌ Keys not found in server after upload!")
+                
                 QMessageBox.information(
                     self,
                     "Keys Generated",
@@ -218,6 +235,7 @@ class LoginWindow(QMainWindow):
                 )
                 self.open_chat_window(username)
             else:
+                print(f"🔑 ❌ Key upload failed: {message}")
                 QMessageBox.warning(
                     self,
                     "Key Upload Failed",
@@ -228,6 +246,10 @@ class LoginWindow(QMainWindow):
                 self.set_ui_enabled(True)
                 
         except Exception as e:
+            print(f"🔑 ❌ Exception during key generation: {e}")
+            import traceback
+            traceback.print_exc()
+            
             QMessageBox.critical(
                 self,
                 "Key Generation Error",

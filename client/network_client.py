@@ -27,44 +27,57 @@ class NetworkClient:
     
     def _make_request(self, method: str, endpoint: str, data: Dict = None) -> Tuple[bool, Dict]:
         """
-        Make HTTP request with error handling.
+        Make HTTP request to server with error handling.
         
         Args:
-            method: HTTP method (GET, POST)
-            endpoint: API endpoint
-            data: Request data for POST
+            method: HTTP method (GET, POST, etc.)
+            endpoint: API endpoint (e.g., '/api/register')
+            data: Request data (for POST requests)
             
         Returns:
             Tuple of (success, response_data)
         """
         try:
             url = f"{self.server_url}{endpoint}"
+            print(f"Making {method} request to: {url}")
             
             if method.upper() == 'GET':
                 response = self.session.get(url, timeout=10)
             elif method.upper() == 'POST':
                 response = self.session.post(url, json=data, timeout=10)
             else:
-                return False, {'error': f'Unsupported method: {method}'}
+                return False, {'error': f'Unsupported HTTP method: {method}'}
             
-            # Parse response
-            if response.headers.get('content-type', '').startswith('application/json'):
-                response_data = response.json()
-            else:
-                response_data = {'error': 'Invalid response format'}
+            print(f"Response status: {response.status_code}")
+            print(f"Response headers: {dict(response.headers)}")
             
-            # Check status
+            # Parse JSON response
+            try:
+                if response.headers.get('content-type', '').startswith('application/json'):
+                    response_data = response.json()
+                else:
+                    # Try to parse as JSON anyway
+                    response_data = response.json()
+            except ValueError:
+                # Not JSON, create error response
+                response_data = {
+                    'error': f'Invalid response format. Status: {response.status_code}, Content: {response.text[:200]}'
+                }
+            
+            # Check if request was successful
             if response.status_code in [200, 201]:
                 return True, response_data
             else:
                 return False, response_data
                 
         except requests.exceptions.ConnectionError:
-            return False, {'error': 'Cannot connect to server. Is Flask server running?'}
+            return False, {'error': 'Cannot connect to server. Is the Flask server running?'}
         except requests.exceptions.Timeout:
-            return False, {'error': 'Request timeout'}
-        except Exception as e:
+            return False, {'error': 'Request timed out'}
+        except requests.exceptions.RequestException as e:
             return False, {'error': f'Network error: {str(e)}'}
+        except Exception as e:
+            return False, {'error': f'Unexpected error: {str(e)}'}
     
     # ==================== USER AUTHENTICATION ====================
     
@@ -249,34 +262,42 @@ class NetworkClient:
         
         print(f"📤 Sending encrypted message to: {recipient_username}")
         
-        # Get recipient's user ID
-        users = self.get_all_users()
-        recipient_id = None
-        
-        for user in users:
-            if user['username'] == recipient_username:
-                recipient_id = user['user_id']
-                break
-        
-        if not recipient_id:
-            return False, f"User '{recipient_username}' not found"
-        
-        data = {
-            'recipient_id': recipient_id,
-            'encrypted_message': encrypted_message,
-            'signature': signature,
-            'nonce': nonce
-        }
-        
-        success, response = self._make_request('POST', '/api/messages', data)
-        
-        if success:
-            print(f"✅ Encrypted message sent to: {recipient_username}")
-            return True, response.get('message', 'Message sent')
-        else:
-            error = response.get('error', 'Failed to send message')
-            print(f"❌ Failed to send message: {error}")
-            return False, error
+        try:
+            # Get recipient's user ID
+            users = self.get_all_users()
+            recipient_id = None
+            
+            for user in users:
+                if user['username'] == recipient_username:
+                    recipient_id = user['user_id']
+                    break
+            
+            if not recipient_id:
+                return False, f"User '{recipient_username}' not found"
+            
+            data = {
+                'recipient_id': recipient_id,
+                'encrypted_message': encrypted_message,
+                'signature': signature,
+                'nonce': nonce
+            }
+            
+            print(f"Sending message data: recipient_id={recipient_id}")
+            
+            success, response = self._make_request('POST', '/api/messages', data)
+            
+            if success:
+                print(f"✅ Encrypted message sent to: {recipient_username}")
+                return True, response.get('message', 'Message sent')
+            else:
+                error = response.get('error', 'Failed to send message')
+                print(f"❌ Failed to send message: {error}")
+                return False, error
+                
+        except Exception as e:
+            error_msg = f"Error sending message: {str(e)}"
+            print(f"❌ {error_msg}")
+            return False, error_msg
     
     def get_my_messages(self) -> List[Dict[str, any]]:
         """
@@ -299,8 +320,8 @@ class NetworkClient:
             print(f"✅ Retrieved {len(messages)} encrypted messages")
             return messages
         else:
-            # This endpoint might not be implemented yet
-            print("⚠️ Message retrieval not available (server endpoint not implemented)")
+            error = response.get('error', 'Failed to get messages')
+            print(f"❌ Failed to get messages: {error}")
             return []
     
     # ==================== SERVER CONNECTION TESTING ====================
