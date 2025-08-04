@@ -37,26 +37,38 @@ class SecureMessagingApp:
         print("🚀 Secure Messaging Application Starting...")
         
     def apply_global_stylesheet(self):
-        """Apply clean, modern stylesheet to the entire application."""
+        """Apply clean, consistent stylesheet."""
         stylesheet = """
         QMainWindow {
-            background-color: #f5f5f5;
+            background-color: #f0f0f0;
         }
         
         QWidget {
-            background-color: #ffffff;
+            background-color: white;
+        }
+        
+        QLineEdit {
+            border: 2px solid #d0d0d0;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 12px;
+            background-color: white;
             color: #333333;
-            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        
+        QLineEdit:focus {
+            border-color: #0078d4;
+            outline: none;
         }
         
         QPushButton {
             background-color: #0078d4;
             color: white;
             border: none;
-            padding: 8px 16px;
             border-radius: 4px;
-            font-weight: 500;
-            min-width: 80px;
+            padding: 10px 20px;
+            font-size: 12px;
+            font-weight: bold;
         }
         
         QPushButton:hover {
@@ -72,62 +84,9 @@ class SecureMessagingApp:
             color: #666666;
         }
         
-        QLineEdit {
-            border: 2px solid #e1e1e1;
-            padding: 8px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        QLineEdit:focus {
-            border-color: #0078d4;
-        }
-        
-        QTextEdit {
-            border: 2px solid #e1e1e1;
-            border-radius: 4px;
-            padding: 8px;
-            font-size: 14px;
-        }
-        
-        QTextEdit:focus {
-            border-color: #0078d4;
-        }
-        
         QLabel {
             color: #333333;
-            font-size: 14px;
-        }
-        
-        QListWidget {
-            border: 2px solid #e1e1e1;
-            border-radius: 4px;
-            background-color: white;
-            alternate-background-color: #f8f8f8;
-        }
-        
-        QListWidget::item {
-            padding: 8px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        QListWidget::item:selected {
-            background-color: #e3f2fd;
-            color: #0078d4;
-        }
-        
-        QGroupBox {
-            font-weight: bold;
-            border: 2px solid #e1e1e1;
-            border-radius: 4px;
-            margin-top: 8px;
-            padding-top: 8px;
-        }
-        
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            left: 10px;
-            padding: 0 5px 0 5px;
+            background-color: transparent;
         }
         """
         

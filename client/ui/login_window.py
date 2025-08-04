@@ -40,112 +40,97 @@ class LoginWindow(QMainWindow):
         
         # Main layout
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setSpacing(20)
-        main_layout.setContentsMargins(40, 40, 40, 40)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(30, 30, 30, 30)
         
         # Title
         title_label = QLabel("🔐 Secure Messaging")
         title_label.setAlignment(Qt.AlignCenter)
-        title_font = QFont("Segoe UI", 18, QFont.Bold)
+        title_font = QFont("Arial", 16, QFont.Bold)
         title_label.setFont(title_font)
-        title_label.setStyleSheet("color: #0078d4; margin-bottom: 10px;")
         main_layout.addWidget(title_label)
         
         # Subtitle
         subtitle_label = QLabel("End-to-End Encrypted Communication")
         subtitle_label.setAlignment(Qt.AlignCenter)
-        subtitle_label.setStyleSheet("color: #666666; font-size: 12px; margin-bottom: 20px;")
+        subtitle_font = QFont("Arial", 10)
+        subtitle_label.setFont(subtitle_font)
         main_layout.addWidget(subtitle_label)
         
-        # Login form container
-        form_frame = QFrame()
-        form_frame.setStyleSheet("""
-            QFrame {
-                background-color: #fafafa;
-                border: 1px solid #e1e1e1;
-                border-radius: 8px;
-                padding: 20px;
-            }
-        """)
-        form_layout = QVBoxLayout(form_frame)
-        form_layout.setSpacing(15)
+        # Add spacing
+        main_layout.addSpacing(25)
         
-        # Username field
+        # Username section
         username_label = QLabel("Username:")
-        username_label.setStyleSheet("font-weight: 500;")
+        username_font = QFont("Arial", 11)
+        username_label.setFont(username_font)
+        main_layout.addWidget(username_label)
+        
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Enter your username")
+        self.username_input.setFixedHeight(35)
+        self.username_input.setFont(QFont("Arial", 11))
         self.username_input.returnPressed.connect(self.handle_login)
+        main_layout.addWidget(self.username_input)
         
-        form_layout.addWidget(username_label)
-        form_layout.addWidget(self.username_input)
+        # Add small spacing
+        main_layout.addSpacing(10)
         
-        # Password field
+        # Password section
         password_label = QLabel("Password:")
-        password_label.setStyleSheet("font-weight: 500;")
+        password_label.setFont(username_font)
+        main_layout.addWidget(password_label)
+        
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.Password)
         self.password_input.setPlaceholderText("Enter your password")
+        self.password_input.setFixedHeight(35)
+        self.password_input.setFont(QFont("Arial", 11))
         self.password_input.returnPressed.connect(self.handle_login)
+        main_layout.addWidget(self.password_input)
         
-        form_layout.addWidget(password_label)
-        form_layout.addWidget(self.password_input)
-        
-        main_layout.addWidget(form_frame)
+        # Add spacing before buttons
+        main_layout.addSpacing(20)
         
         # Button layout
         button_layout = QHBoxLayout()
-        button_layout.setSpacing(10)
+        button_layout.setSpacing(15)
         
         # Login button
         self.login_button = QPushButton("Login")
+        self.login_button.setFixedHeight(40)
+        self.login_button.setFont(QFont("Arial", 11, QFont.Bold))
         self.login_button.clicked.connect(self.handle_login)
-        self.login_button.setStyleSheet("""
-            QPushButton {
-                background-color: #0078d4;
-                font-weight: 600;
-                padding: 10px 20px;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #106ebe;
-            }
-        """)
+        button_layout.addWidget(self.login_button)
         
         # Register button
         self.register_button = QPushButton("Create Account")
+        self.register_button.setFixedHeight(40)
+        self.register_button.setFont(QFont("Arial", 11, QFont.Bold))
         self.register_button.clicked.connect(self.show_register_window)
-        self.register_button.setStyleSheet("""
-            QPushButton {
-                background-color: #6c757d;
-                font-weight: 600;
-                padding: 10px 20px;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #5a6268;
-            }
-        """)
-        
-        button_layout.addWidget(self.login_button)
         button_layout.addWidget(self.register_button)
         
         main_layout.addLayout(button_layout)
         
+        # Add spacing
+        main_layout.addSpacing(15)
+        
         # Status label
         self.status_label = QLabel("")
         self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("color: #666666; font-size: 12px;")
+        self.status_label.setFont(QFont("Arial", 10))
         main_layout.addWidget(self.status_label)
         
-        # Add some stretch at the bottom
+        # Add stretch at the bottom
         main_layout.addStretch()
         
     def show_status(self, message: str, is_error: bool = False):
         """Show status message."""
-        color = "#dc3545" if is_error else "#28a745"
         self.status_label.setText(message)
-        self.status_label.setStyleSheet(f"color: {color}; font-size: 12px;")
+        if is_error:
+            self.status_label.setStyleSheet("color: red;")
+        else:
+            self.status_label.setStyleSheet("color: green;")
     
     def handle_login(self):
         """Handle user login."""

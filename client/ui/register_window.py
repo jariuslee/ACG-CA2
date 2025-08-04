@@ -38,144 +38,109 @@ class RegisterWindow(QDialog):
         """Set up the user interface."""
         # Main layout
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(20)
-        main_layout.setContentsMargins(40, 30, 40, 30)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(30, 25, 30, 25)
         
         # Title
         title_label = QLabel("Create New Account")
         title_label.setAlignment(Qt.AlignCenter)
-        title_font = QFont("Segoe UI", 16, QFont.Bold)
+        title_font = QFont("Arial", 16, QFont.Bold)
         title_label.setFont(title_font)
-        title_label.setStyleSheet("color: #0078d4; margin-bottom: 10px;")
         main_layout.addWidget(title_label)
         
         # Subtitle
         subtitle_label = QLabel("Join the secure messaging network")
         subtitle_label.setAlignment(Qt.AlignCenter)
-        subtitle_label.setStyleSheet("color: #666666; font-size: 12px; margin-bottom: 20px;")
+        subtitle_font = QFont("Arial", 10)
+        subtitle_label.setFont(subtitle_font)
         main_layout.addWidget(subtitle_label)
         
-        # Registration form container
-        form_frame = QFrame()
-        form_frame.setStyleSheet("""
-            QFrame {
-                background-color: #fafafa;
-                border: 1px solid #e1e1e1;
-                border-radius: 8px;
-                padding: 20px;
-            }
-        """)
-        form_layout = QVBoxLayout(form_frame)
-        form_layout.setSpacing(15)
+        # Add spacing
+        main_layout.addSpacing(20)
         
         # Username field
         username_label = QLabel("Username:")
-        username_label.setStyleSheet("font-weight: 500;")
+        username_label.setFont(QFont("Arial", 11))
+        main_layout.addWidget(username_label)
+        
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Choose a unique username")
+        self.username_input.setFixedHeight(35)
+        self.username_input.setFont(QFont("Arial", 11))
         self.username_input.textChanged.connect(self.validate_form)
+        main_layout.addWidget(self.username_input)
         
-        form_layout.addWidget(username_label)
-        form_layout.addWidget(self.username_input)
+        # Add small spacing
+        main_layout.addSpacing(8)
         
         # Password field
         password_label = QLabel("Password:")
-        password_label.setStyleSheet("font-weight: 500;")
+        password_label.setFont(QFont("Arial", 11))
+        main_layout.addWidget(password_label)
+        
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.Password)
         self.password_input.setPlaceholderText("Choose a strong password")
+        self.password_input.setFixedHeight(35)
+        self.password_input.setFont(QFont("Arial", 11))
         self.password_input.textChanged.connect(self.validate_form)
+        main_layout.addWidget(self.password_input)
         
-        form_layout.addWidget(password_label)
-        form_layout.addWidget(self.password_input)
+        # Add small spacing
+        main_layout.addSpacing(8)
         
         # Confirm password field
         confirm_label = QLabel("Confirm Password:")
-        confirm_label.setStyleSheet("font-weight: 500;")
+        confirm_label.setFont(QFont("Arial", 11))
+        main_layout.addWidget(confirm_label)
+        
         self.confirm_input = QLineEdit()
         self.confirm_input.setEchoMode(QLineEdit.Password)
         self.confirm_input.setPlaceholderText("Re-enter your password")
+        self.confirm_input.setFixedHeight(35)
+        self.confirm_input.setFont(QFont("Arial", 11))
         self.confirm_input.textChanged.connect(self.validate_form)
+        main_layout.addWidget(self.confirm_input)
         
-        form_layout.addWidget(confirm_label)
-        form_layout.addWidget(self.confirm_input)
+        # Add spacing
+        main_layout.addSpacing(15)
         
-        main_layout.addWidget(form_frame)
+        # Security notice (simplified)
+        security_label = QLabel("🔐 Security: Keys stored locally, messages encrypted end-to-end")
+        security_label.setAlignment(Qt.AlignCenter)
+        security_label.setFont(QFont("Arial", 9))
+        security_label.setWordWrap(True)
+        main_layout.addWidget(security_label)
         
-        # Security notice
-        security_frame = QFrame()
-        security_frame.setStyleSheet("""
-            QFrame {
-                background-color: #e3f2fd;
-                border: 1px solid #bbdefb;
-                border-radius: 4px;
-                padding: 12px;
-            }
-        """)
-        security_layout = QVBoxLayout(security_frame)
-        
-        security_title = QLabel("🔐 Security Information")
-        security_title.setStyleSheet("font-weight: bold; color: #0277bd;")
-        security_layout.addWidget(security_title)
-        
-        security_text = QLabel(
-            "• Your password is hashed and stored securely\n"
-            "• Encryption keys will be generated after registration\n"
-            "• Private keys are stored only on your device\n"
-            "• All messages are end-to-end encrypted"
-        )
-        security_text.setStyleSheet("color: #01579b; font-size: 12px; margin-top: 5px;")
-        security_layout.addWidget(security_text)
-        
-        main_layout.addWidget(security_frame)
+        # Add spacing
+        main_layout.addSpacing(10)
         
         # Agreement checkbox
-        self.agreement_checkbox = QCheckBox(
-            "I understand that my private keys will be stored locally and "
-            "I am responsible for keeping them secure."
-        )
-        self.agreement_checkbox.setStyleSheet("font-size: 12px;")
+        self.agreement_checkbox = QCheckBox("I understand that my private keys will be stored locally")
+        self.agreement_checkbox.setFont(QFont("Arial", 10))
         self.agreement_checkbox.stateChanged.connect(self.validate_form)
         main_layout.addWidget(self.agreement_checkbox)
         
+        # Add spacing
+        main_layout.addSpacing(15)
+        
         # Button layout
         button_layout = QHBoxLayout()
-        button_layout.setSpacing(10)
+        button_layout.setSpacing(15)
         
         # Cancel button
         self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setFixedHeight(40)
+        self.cancel_button.setFont(QFont("Arial", 11, QFont.Bold))
         self.cancel_button.clicked.connect(self.reject)
-        self.cancel_button.setStyleSheet("""
-            QPushButton {
-                background-color: #6c757d;
-                font-weight: 600;
-                padding: 10px 20px;
-            }
-            QPushButton:hover {
-                background-color: #5a6268;
-            }
-        """)
+        button_layout.addWidget(self.cancel_button)
         
         # Register button
         self.register_button = QPushButton("Create Account")
+        self.register_button.setFixedHeight(40)
+        self.register_button.setFont(QFont("Arial", 11, QFont.Bold))
         self.register_button.clicked.connect(self.handle_registration)
         self.register_button.setEnabled(False)
-        self.register_button.setStyleSheet("""
-            QPushButton {
-                background-color: #28a745;
-                font-weight: 600;
-                padding: 10px 20px;
-            }
-            QPushButton:hover {
-                background-color: #218838;
-            }
-            QPushButton:disabled {
-                background-color: #cccccc;
-                color: #666666;
-            }
-        """)
-        
-        button_layout.addWidget(self.cancel_button)
         button_layout.addWidget(self.register_button)
         
         main_layout.addLayout(button_layout)
@@ -183,7 +148,7 @@ class RegisterWindow(QDialog):
         # Status label
         self.status_label = QLabel("")
         self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("color: #666666; font-size: 12px;")
+        self.status_label.setFont(QFont("Arial", 10))
         main_layout.addWidget(self.status_label)
         
     def validate_form(self):
@@ -231,9 +196,11 @@ class RegisterWindow(QDialog):
     
     def show_status(self, message: str, is_error: bool = False):
         """Show status message."""
-        color = "#dc3545" if is_error else "#28a745"
         self.status_label.setText(message)
-        self.status_label.setStyleSheet(f"color: {color}; font-size: 12px;")
+        if is_error:
+            self.status_label.setStyleSheet("color: red;")
+        else:
+            self.status_label.setStyleSheet("color: green;")
     
     def handle_registration(self):
         """Handle user registration."""
