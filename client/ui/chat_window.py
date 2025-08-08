@@ -660,54 +660,59 @@ class ChatWindow(QMainWindow):
             self.send_button.setEnabled(True)
     
     def add_message_to_display(self, sender: str, message: str, is_sent: bool):
-        """Add message to the chat display."""
+        """Add message to the chat display with proper line breaks and spacing."""
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
         
         if is_sent:
             color = "#0078d4"
             prefix = "📤"
+            bg_color = "#f0f8ff"
         else:
             color = "#28a745"
             prefix = "📥"
+            bg_color = "#f0fff0"
         
-        # Format message
-        formatted_message = f"""
-        <div style="margin: 8px 0; padding: 8px; background-color: {'#f0f8ff' if is_sent else '#f0fff0'}; 
-             border-left: 3px solid {color}; border-radius: 4px;">
-            <div style="font-weight: bold; color: {color}; font-size: 12px;">
-                {prefix} {sender} - {timestamp}
-            </div>
-            <div style="margin-top: 4px; color: #333; font-size: 13px;">
-                {message}
-            </div>
-        </div>
-        """
+        # FIXED: Format message with proper HTML structure and explicit spacing
+        formatted_message = f'''<div style="margin: 12px 0; padding: 12px; background-color: {bg_color}; border-left: 4px solid {color}; border-radius: 8px; font-family: 'Segoe UI', Arial, sans-serif; display: block;">
+<div style="font-weight: bold; color: {color}; font-size: 12px; margin-bottom: 8px; display: block;">
+{prefix} {sender} - {timestamp}
+</div>
+<div style="color: #333; font-size: 14px; line-height: 1.6; word-wrap: break-word; display: block;">
+{message}
+</div>
+</div>
+<div style="height: 8px; display: block;"></div>'''
         
-        # Add to display
+        # Add to display with proper cursor handling
         cursor = self.messages_display.textCursor()
         cursor.movePosition(QTextCursor.End)
         cursor.insertHtml(formatted_message)
         self.messages_display.setTextCursor(cursor)
         self.messages_display.ensureCursorVisible()
+        
+        # Force the display to update
+        self.messages_display.repaint()
     
     def add_system_message(self, message: str):
-        """Add system message to display."""
+        """Add system message to display with proper line breaks and spacing."""
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
         
-        formatted_message = f"""
-        <div style="margin: 4px 0; padding: 6px; background-color: #fff3cd; 
-             border-left: 3px solid #ffc107; border-radius: 4px;">
-            <div style="color: #856404; font-size: 12px; font-style: italic;">
-                ℹ️ {message} - {timestamp}
-            </div>
-        </div>
-        """
+        # FIXED: Format system message with proper HTML structure and explicit spacing
+        formatted_message = f'''<div style="margin: 8px 0; padding: 10px; background-color: #fff3cd; border-left: 3px solid #ffc107; border-radius: 6px; font-family: 'Segoe UI', Arial, sans-serif; display: block;">
+<div style="color: #856404; font-size: 12px; font-style: italic; display: block;">
+ℹ️ {message} - {timestamp}
+</div>
+</div>
+<div style="height: 6px; display: block;"></div>'''
         
         cursor = self.messages_display.textCursor()
         cursor.movePosition(QTextCursor.End)
         cursor.insertHtml(formatted_message)
         self.messages_display.setTextCursor(cursor)
         self.messages_display.ensureCursorVisible()
+        
+        # Force the display to update
+        self.messages_display.repaint()
     
     def show_status(self, message: str):
         """Update status label."""
