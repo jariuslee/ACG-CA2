@@ -1,4 +1,4 @@
-# ui/chat_window.py - Clean Main Chat Interface
+# ui/chat_window.py - FIXED VERSION - Prevents Duplicate Messages
 # IT2504 Applied Cryptography Assignment 2
 
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, 
@@ -10,10 +10,12 @@ from PyQt5.QtGui import QFont, QTextCursor
 
 from crypto_utils import ClientCrypto
 import datetime
+import time
 
 class ChatWindow(QMainWindow):
     """
     Clean and intuitive main chat interface for secure messaging.
+    FIXED: Prevents duplicate message display.
     """
     
     def __init__(self, network_client, key_manager, username):
@@ -26,9 +28,10 @@ class ChatWindow(QMainWindow):
         self.current_chat_user = None
         self.users_list = []
         
-        # Initialize tracking sets
+        # FIXED: Better message tracking
         self.displayed_message_ids = set()
-        self.sent_message_tracker = set()
+        self.sent_message_hashes = set()  # Track messages we sent to prevent duplicates
+        self.last_message_count_per_user = {}  # Track message count per user
         
         self.setWindowTitle(f"Secure Messaging - {username}")
         self.setMinimumSize(800, 600)
@@ -332,13 +335,9 @@ class ChatWindow(QMainWindow):
         # Clear messages and show encryption info
         self.messages_display.clear()
         
-        # Clear displayed message IDs for fresh loading
-        if hasattr(self, 'displayed_message_ids'):
-            self.displayed_message_ids.clear()
-        
-        # Clear sent message tracker for fresh tracking
-        if hasattr(self, 'sent_message_tracker'):
-            self.sent_message_tracker.clear()
+        # FIXED: Clear tracking for fresh conversation
+        self.displayed_message_ids.clear()
+        self.sent_message_hashes.clear()
         
         self.add_system_message(f"🔐 End-to-end encrypted chat with {username}")
         self.add_system_message("Messages are encrypted with AES-256-GCM and signed with ED25519")
@@ -347,6 +346,12 @@ class ChatWindow(QMainWindow):
         self.load_messages_with_user(username)
         
         self.show_status(f"Ready to chat with {username}")
+    
+    def create_message_hash(self, message_text: str, sender: str, recipient: str) -> str:
+        """Create a unique hash for a message to prevent duplicates."""
+        import hashlib
+        content = f"{sender}:{recipient}:{message_text}:{time.time()//60}"  # Round to minute
+        return hashlib.md5(content.encode()).hexdigest()
     
     def load_messages_with_user(self, username: str):
         """Load and decrypt messages with specific user (both sent and received)."""
@@ -369,10 +374,11 @@ class ChatWindow(QMainWindow):
             self.add_system_message(f"Loading {len(user_messages)} previous messages...")
             
             # Get keys for both users
-            sender_keys = self.network_client.get_user_public_keys(username)
+            other_user_keys = self.network_client.get_user_public_keys(username)
             my_crypto_keys = self.key_manager.get_my_encryption_keys(self.username)
+            my_public_keys = self.key_manager.get_my_public_keys(self.username)
             
-            if not sender_keys or not my_crypto_keys:
+            if not other_user_keys or not my_crypto_keys or not my_public_keys:
                 self.add_system_message("⚠️ Cannot load messages - keys not available")
                 return
             
@@ -386,49 +392,42 @@ class ChatWindow(QMainWindow):
                     is_sent = msg['sender_username'] == self.username
                     sender_name = "You" if is_sent else msg['sender_username']
                     
-                    # Create unique message ID to prevent duplicates
-                    message_id = f"{msg['message_id']}_{msg['sender_username']}_{msg['timestamp']}"
+                    # FIXED: Create more robust unique message ID
+                    message_id = f"{msg['message_id']}_{msg['sender_username']}_{msg['recipient_username']}_{msg['timestamp']}"
                     if message_id in self.displayed_message_ids:
                         continue
                     
+                    # Proper key handling for both sent and received messages
                     if is_sent:
-                        # For sent messages, we need to decrypt using recipient's public key
-                        # But we need to get the recipient's keys
-                        recipient_keys = self.network_client.get_user_public_keys(msg['recipient_username'])
-                        if not recipient_keys:
-                            self.add_system_message(f"⚠️ Cannot decrypt sent message - recipient keys not available")
-                            continue
-                        
-                        # Get my own public keys for signature verification
-                        my_public_keys = self.key_manager.get_my_public_keys(self.username)
-                        if not my_public_keys:
-                            self.add_system_message(f"⚠️ Cannot verify sent message - your public keys not available")
-                            continue
-                        
-                        # Decrypt using recipient's public key and my private key
+                        # For sent messages: I sent TO the other user
                         decrypted_message, signature_valid = self.crypto.process_message_from_server(
                             msg['encrypted_message'],
                             msg['nonce'],
                             msg['signature'],
-                            recipient_keys['x25519_public_key'],
-                            my_crypto_keys['x25519_private'],
-                            my_public_keys['ed25519_public']  # My public key for signature verification
+                            other_user_keys['x25519_public_key'],  # recipient's public
+                            my_crypto_keys['x25519_private'],      # my private
+                            my_public_keys['ed25519_public']       # my public for signature
                         )
                     else:
-                        # For received messages, decrypt using sender's public key
+                        # For received messages: other user sent TO me
                         decrypted_message, signature_valid = self.crypto.process_message_from_server(
                             msg['encrypted_message'],
                             msg['nonce'],
                             msg['signature'],
-                            sender_keys['x25519_public_key'],
-                            my_crypto_keys['x25519_private'],
-                            sender_keys['ed25519_public_key']
+                            other_user_keys['x25519_public_key'],  # sender's public
+                            my_crypto_keys['x25519_private'],      # my private
+                            other_user_keys['ed25519_public_key']  # sender's public for signature
                         )
                     
                     if decrypted_message:
                         # Add to display with correct styling
                         self.add_message_to_display(sender_name, decrypted_message, is_sent)
                         self.displayed_message_ids.add(message_id)
+                        
+                        # FIXED: Track sent message hashes to prevent duplicates on refresh
+                        if is_sent:
+                            msg_hash = self.create_message_hash(decrypted_message, self.username, username)
+                            self.sent_message_hashes.add(msg_hash)
                         
                         if not is_sent and not signature_valid:
                             self.add_system_message(f"⚠️ Message from {sender_name} failed signature verification!")
@@ -443,10 +442,10 @@ class ChatWindow(QMainWindow):
         except Exception as e:
             self.add_system_message(f"❌ Error loading messages: {str(e)}")
         
-        # Initialize the message count for this user to prevent re-displaying loaded messages
-        if not hasattr(self, 'last_message_count'):
-            self.last_message_count = {}
-        self.last_message_count[username] = len(user_messages)
+        # Store the message count for this user
+        if not hasattr(self, 'last_message_count_per_user'):
+            self.last_message_count_per_user = {}
+        self.last_message_count_per_user[username] = len(user_messages) if 'user_messages' in locals() else 0
     
     def refresh_data(self):
         """Refresh both users and messages."""
@@ -455,7 +454,6 @@ class ChatWindow(QMainWindow):
             self.check_for_new_messages()
         
         # Refresh user list less frequently
-        import time
         if not hasattr(self, 'last_user_refresh') or time.time() - self.last_user_refresh > 30:
             self.refresh_users()
             self.last_user_refresh = time.time()
@@ -479,101 +477,67 @@ class ChatWindow(QMainWindow):
                     user_messages.append(msg)
             
             # Check if we have new messages
-            if not hasattr(self, 'last_message_count'):
-                self.last_message_count = {}
-            
             current_count = len(user_messages)
-            last_count = self.last_message_count.get(username, 0)
+            last_count = self.last_message_count_per_user.get(username, 0)
             
             if current_count > last_count:
-                # We have new messages
-                new_messages = user_messages[last_count:]  # Get only the new ones
-                
-                # Get keys for decryption
-                sender_keys = self.network_client.get_user_public_keys(username)
-                my_crypto_keys = self.key_manager.get_my_encryption_keys(self.username)
-                my_public_keys = self.key_manager.get_my_public_keys(self.username)
-                
-                if sender_keys and my_crypto_keys and my_public_keys:
-                    for msg in new_messages:
-                        try:
-                            # Determine if this is a sent or received message
-                            is_sent = msg['sender_username'] == self.username
-                            sender_name = "You" if is_sent else msg['sender_username']
-                            
-                            # Create unique message ID
-                            message_id = f"{msg['message_id']}_{msg['sender_username']}_{msg['timestamp']}"
-                            
-                            # Skip if we've already displayed this message
-                            if message_id in self.displayed_message_ids:
-                                continue
-                            
-                            # For sent messages, check if we've already tracked this as sent
-                            if is_sent:
-                                # Try to decrypt the message to get its content for tracking
-                                try:
-                                    recipient_keys = self.network_client.get_user_public_keys(msg['recipient_username'])
-                                    my_crypto_keys = self.key_manager.get_my_encryption_keys(self.username)
-                                    my_public_keys = self.key_manager.get_my_public_keys(self.username)
-                                    
-                                    if recipient_keys and my_crypto_keys and my_public_keys:
-                                        decrypted_content, _ = self.crypto.process_message_from_server(
-                                            msg['encrypted_message'],
-                                            msg['nonce'],
-                                            msg['signature'],
-                                            recipient_keys['x25519_public_key'],
-                                            my_crypto_keys['x25519_private'],
-                                            my_public_keys['ed25519_public']
-                                        )
-                                        
-                                        if decrypted_content:
-                                            # Create the same key format used when sending
-                                            sent_message_key = f"{msg['sender_username']}_{msg['recipient_username']}_{decrypted_content}"
-                                            if sent_message_key in self.sent_message_tracker:
-                                                continue  # Skip this message as we already displayed it when sending
-                                except:
-                                    pass  # If decryption fails, continue with normal processing
-                            
-                            if is_sent:
-                                # For sent messages, decrypt using recipient's public key
-                                recipient_keys = self.network_client.get_user_public_keys(msg['recipient_username'])
-                                if not recipient_keys:
-                                    continue
-                                
-                                decrypted_message, signature_valid = self.crypto.process_message_from_server(
-                                    msg['encrypted_message'],
-                                    msg['nonce'],
-                                    msg['signature'],
-                                    recipient_keys['x25519_public_key'],
-                                    my_crypto_keys['x25519_private'],
-                                    my_public_keys['ed25519_public']
-                                )
-                            else:
-                                # For received messages, decrypt using sender's public key
-                                decrypted_message, signature_valid = self.crypto.process_message_from_server(
-                                    msg['encrypted_message'],
-                                    msg['nonce'],
-                                    msg['signature'],
-                                    sender_keys['x25519_public_key'],
-                                    my_crypto_keys['x25519_private'],
-                                    sender_keys['ed25519_public_key']
-                                )
-                            
-                            if decrypted_message:
-                                self.add_message_to_display(sender_name, decrypted_message, is_sent)
-                                self.displayed_message_ids.add(message_id)
-                                
-                                if not is_sent and not signature_valid:
-                                    self.add_system_message(f"⚠️ New message failed signature verification!")
-                                
-                        except Exception as e:
-                            self.add_system_message(f"❌ Failed to decrypt new message: {str(e)}")
-                
-                self.last_message_count[username] = current_count
+                # We have new messages - process only the new ones
+                new_messages = user_messages[last_count:]
+                self.process_new_messages(new_messages, username)
+                self.last_message_count_per_user[username] = current_count
             
         except Exception as e:
             # Don't spam errors for refresh issues
             pass
+    
+    def process_new_messages(self, new_messages, username):
+        """Process only new messages to prevent duplicates."""
+        try:
+            # Get keys
+            other_user_keys = self.network_client.get_user_public_keys(username)
+            my_crypto_keys = self.key_manager.get_my_encryption_keys(self.username)
+            my_public_keys = self.key_manager.get_my_public_keys(self.username)
+            
+            if not other_user_keys or not my_crypto_keys or not my_public_keys:
+                return
+            
+            for msg in new_messages:
+                try:
+                    # Check if we already displayed this message
+                    message_id = f"{msg['message_id']}_{msg['sender_username']}_{msg['recipient_username']}_{msg['timestamp']}"
+                    if message_id in self.displayed_message_ids:
+                        continue
+                    
+                    is_sent = msg['sender_username'] == self.username
+                    sender_name = "You" if is_sent else msg['sender_username']
+                    
+                    # FIXED: For sent messages, check if we already displayed it immediately when sending
+                    if is_sent:
+                        # Skip messages we just sent (they're already displayed)
+                        continue
+                    
+                    # Decrypt received message
+                    decrypted_message, signature_valid = self.crypto.process_message_from_server(
+                        msg['encrypted_message'],
+                        msg['nonce'],
+                        msg['signature'],
+                        other_user_keys['x25519_public_key'],
+                        my_crypto_keys['x25519_private'],
+                        other_user_keys['ed25519_public_key']
+                    )
+                    
+                    if decrypted_message:
+                        self.add_message_to_display(sender_name, decrypted_message, is_sent)
+                        self.displayed_message_ids.add(message_id)
+                        
+                        if not signature_valid:
+                            self.add_system_message(f"⚠️ Message from {sender_name} failed signature verification!")
+                    
+                except Exception as e:
+                    self.add_system_message(f"❌ Error processing new message: {str(e)}")
+                    
+        except Exception as e:
+            print(f"Error processing new messages: {e}")
     
     def send_message(self):
         """Send encrypted message."""
@@ -587,7 +551,13 @@ class ChatWindow(QMainWindow):
         recipient_username = self.current_chat_user['username']
         recipient_id = self.current_chat_user['user_id']
         
-        print(f"🔍 DEBUG: Sending to {recipient_username} (ID: {recipient_id})")
+        # FIXED: Create hash to prevent duplicate display on refresh
+        msg_hash = self.create_message_hash(message_text, self.username, recipient_username)
+        
+        # Check if we already sent this exact message recently
+        if msg_hash in self.sent_message_hashes:
+            self.show_status("Duplicate message prevented")
+            return
         
         try:
             self.show_status("Encrypting message...")
@@ -600,8 +570,6 @@ class ChatWindow(QMainWindow):
                 self.send_button.setEnabled(True)
                 return
             
-            print(f"🔍 DEBUG: Got recipient keys: {list(recipient_keys.keys())}")
-            
             # Get my private keys
             my_crypto_keys = self.key_manager.get_my_encryption_keys(self.username)
             if not my_crypto_keys:
@@ -609,10 +577,7 @@ class ChatWindow(QMainWindow):
                 self.send_button.setEnabled(True)
                 return
             
-            print(f"🔍 DEBUG: Got my keys: {list(my_crypto_keys.keys())}")
-            
             # Encrypt and sign the message
-            print("🔍 DEBUG: Encrypting message...")
             encrypted_package = self.crypto.prepare_message_for_server(
                 message_text,
                 recipient_keys['x25519_public_key'],
@@ -620,12 +585,9 @@ class ChatWindow(QMainWindow):
                 my_crypto_keys['ed25519_private']
             )
             
-            print(f"🔍 DEBUG: Encryption complete, package keys: {list(encrypted_package.keys())}")
-            
             self.show_status("Sending encrypted message...")
             
             # Send to server
-            print(f"🔍 DEBUG: Sending to server...")
             success, response = self.network_client.send_encrypted_message(
                 recipient_username,
                 encrypted_package['encrypted_message'],
@@ -633,17 +595,12 @@ class ChatWindow(QMainWindow):
                 encrypted_package['nonce']
             )
             
-            print(f"🔍 DEBUG: Server response - Success: {success}, Response: {response}")
-            
             if success:
-                # Create a unique identifier for this sent message
-                sent_message_key = f"{self.username}_{recipient_username}_{message_text}"
+                # FIXED: Add to sent message hashes to prevent duplicate on refresh
+                self.sent_message_hashes.add(msg_hash)
                 
                 # Add to display immediately
                 self.add_message_to_display("You", message_text, True)
-                
-                # Track this sent message to prevent it from being displayed again by refresh
-                self.sent_message_tracker.add(sent_message_key)
                 
                 self.message_input.clear()
                 self.show_status("Message sent successfully")
@@ -652,7 +609,6 @@ class ChatWindow(QMainWindow):
                 self.show_status("Failed to send message")
             
         except Exception as e:
-            print(f"🔍 DEBUG: Exception during send: {e}")
             QMessageBox.critical(self, "Encryption Error", f"Failed to encrypt message: {str(e)}")
             self.show_status("Encryption failed")
         
@@ -672,7 +628,7 @@ class ChatWindow(QMainWindow):
             prefix = "📥"
             bg_color = "#f0fff0"
         
-        # FIXED: Format message with proper HTML structure and explicit spacing
+        # Format message with proper HTML structure and explicit spacing
         formatted_message = f'''<div style="margin: 12px 0; padding: 12px; background-color: {bg_color}; border-left: 4px solid {color}; border-radius: 8px; font-family: 'Segoe UI', Arial, sans-serif; display: block;">
 <div style="font-weight: bold; color: {color}; font-size: 12px; margin-bottom: 8px; display: block;">
 {prefix} {sender} - {timestamp}
@@ -697,7 +653,7 @@ class ChatWindow(QMainWindow):
         """Add system message to display with proper line breaks and spacing."""
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
         
-        # FIXED: Format system message with proper HTML structure and explicit spacing
+        # Format system message with proper HTML structure and explicit spacing
         formatted_message = f'''<div style="margin: 8px 0; padding: 10px; background-color: #fff3cd; border-left: 3px solid #ffc107; border-radius: 6px; font-family: 'Segoe UI', Arial, sans-serif; display: block;">
 <div style="color: #856404; font-size: 12px; font-style: italic; display: block;">
 ℹ️ {message} - {timestamp}

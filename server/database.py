@@ -1,4 +1,4 @@
-# database.py - Complete MySQL Database Operations
+# database.py - Complete MySQL Database Operations with PKI Support
 # IT2504 Applied Cryptography Assignment 2
 
 import mysql.connector
@@ -7,9 +7,9 @@ import hashlib
 import secrets
 
 class DatabaseManager:
-    """Simple database manager for secure messaging system."""
+    """Database manager for secure messaging system with PKI support."""
     
-    def __init__(self, host='localhost', database='secure_messaging', 
+    def __init__(self, host='localhost', database='secure_messaging2', 
                  user='root', password='1qwer$#@!'):
         self.host = host
         self.database = database
@@ -242,3 +242,70 @@ class DatabaseManager:
         except Error as e:
             print(f"Error getting messages: {e}")
             return []
+    
+    # ==================== PKI CERTIFICATE METHODS ====================
+    
+    def store_user_certificate(self, user_id, certificate):
+        """Store user's certificate."""
+        try:
+            cursor = self.connection.cursor()
+            
+            # Check if certificate column exists, if not add it
+            cursor.execute("SHOW COLUMNS FROM public_keys LIKE 'certificate'")
+            if not cursor.fetchone():
+                print("⚠️ Adding certificate column to database...")
+                cursor.execute("ALTER TABLE public_keys ADD COLUMN certificate TEXT NULL")
+                self.connection.commit()
+                print("✅ Certificate column added")
+            
+            # Update the user's record with certificate
+            cursor.execute("""
+                UPDATE public_keys 
+                SET certificate = %s 
+                WHERE user_id = %s
+            """, (certificate, user_id))
+            
+            affected_rows = cursor.rowcount
+            self.connection.commit()
+            cursor.close()
+            
+            if affected_rows > 0:
+                print(f"✅ Certificate stored for user {user_id}")
+                return True
+            else:
+                print(f"⚠️ No rows updated for user {user_id}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Error storing certificate: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return False
+
+    def get_user_certificate(self, username):
+        """Get user's certificate."""
+        try:
+            cursor = self.connection.cursor()
+            
+            cursor.execute("""
+                SELECT pk.certificate
+                FROM public_keys pk
+                JOIN users u ON pk.user_id = u.user_id
+                WHERE u.username = %s
+                ORDER BY pk.key_created_at DESC
+                LIMIT 1
+            """, (username,))
+            
+            result = cursor.fetchone()
+            cursor.close()
+            
+            if result and result[0]:
+                print(f"✅ Certificate found for {username}")
+                return result[0]
+            else:
+                print(f"⚠️ No certificate found for {username}")
+                return None
+                
+        except Exception as e:
+            print(f"❌ Error getting certificate: {e}")
+            return None

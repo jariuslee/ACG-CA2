@@ -1,6 +1,7 @@
-# ui/login_window.py - Clean Login Interface
+# ui/login_window.py - Fixed version with correct imports
 # IT2504 Applied Cryptography Assignment 2
 
+# MAKE SURE these imports are at the TOP of your file:
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QLineEdit, QPushButton, QMessageBox, QFrame)
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -191,48 +192,85 @@ class LoginWindow(QMainWindow):
             self.set_ui_enabled(True)
     
     def generate_user_keys(self, username: str):
-        """Generate and upload user's cryptographic keys."""
+        """Generate and upload user's cryptographic keys with PKI certificate."""
         try:
             self.show_status("Generating encryption keys...")
-            print(f"🔑 Starting key generation for user: {username}")
+            print(f"🔑 Starting PKI key generation for user: {username}")
             
-            # Generate keys locally
+            # Generate keys locally (your existing method - unchanged)
             public_keys = self.key_manager.generate_keys_for_user(username)
             print(f"🔑 Local key generation completed")
-            print(f"🔑 Public keys generated: {list(public_keys.keys())}")
-            print(f"🔑 ED25519 key: {public_keys['ed25519_public_key'][:50]}...")
-            print(f"🔑 X25519 key: {public_keys['x25519_public_key'][:50]}...")
             
-            self.show_status("Uploading public keys to server...")
-            print(f"🔑 Uploading keys to server...")
+            self.show_status("Uploading keys and requesting certificate...")
+            print(f"🔑 Uploading keys with certificate request...")
             
-            # Upload public keys to server
+            # NEW: Try PKI upload first
+            try:
+                from simple_pki import PKIEnhancedNetworkClient
+                pki_client = PKIEnhancedNetworkClient(self.network_client)
+                
+                success, message = pki_client.upload_keys_with_certificate(
+                    public_keys['ed25519_public_key'],
+                    public_keys['x25519_public_key']
+                )
+                
+                if success:
+                    self.show_status("Security certificate issued and keys uploaded!", False)
+                    
+                    QMessageBox.information(
+                        self,
+                        "Keys and Certificate Ready",
+                        "Your encryption keys have been generated with a digital identity certificate!\n\n"
+                        "🔐 Your private keys are stored securely on this device\n"
+                        "📤 Your public keys and certificate are on the server\n"
+                        "🏆 Certificate prevents man-in-the-middle attacks\n\n"
+                        "You can now send and receive encrypted messages!"
+                    )
+                    self.open_chat_window(username)
+                    return
+                    
+            except Exception as pki_error:
+                print(f"⚠️ PKI upload failed: {pki_error}")
+                print("🔄 Falling back to legacy key upload...")
+            
+            # Fallback to your existing method
             success, message = self.network_client.upload_my_public_keys(
                 public_keys['ed25519_public_key'],
                 public_keys['x25519_public_key']
             )
             
-            print(f"🔑 Upload result: success={success}, message={message}")
-            
             if success:
-                self.show_status("Keys generated successfully!", False)
-                
-                # Test if keys were actually stored
-                print(f"🔑 Testing key retrieval...")
-                test_keys = self.network_client.get_user_public_keys(username)
-                if test_keys:
-                    print(f"🔑 ✅ Keys successfully stored and retrieved from server!")
+                # Detect if a certificate was actually issued (dynamic messaging)
+                has_cert = False
+                try:
+                    ok, info = self.network_client._make_request('GET', f'/api/certificate-info/{username}')
+                    has_cert = bool(ok and info.get('has_certificate') and info.get('is_valid') and info.get('username_match'))
+                except Exception:
+                    has_cert = False
+
+                if has_cert:
+                    self.show_status("Security certificate issued and keys uploaded!", False)
+                    QMessageBox.information(
+                        self,
+                        "Keys and Certificate Ready",
+                        "Your encryption keys have been generated with a digital identity certificate!\n\n"
+                        "🔐 Your private keys are stored securely on this device\n"
+                        "📤 Your public keys and certificate are on the server\n"
+                        "🏆 Certificate prevents man-in-the-middle attacks\n\n"
+                        "You can now send and receive encrypted messages!"
+                    )
                 else:
-                    print(f"🔑 ❌ Keys not found in server after upload!")
-                
-                QMessageBox.information(
-                    self,
-                    "Keys Generated",
-                    "Your encryption keys have been generated and uploaded!\n\n"
-                    "🔐 Your private keys are stored securely on this device\n"
-                    "📤 Your public keys are available on the server\n\n"
-                    "You can now send and receive encrypted messages!"
-                )
+                    self.show_status("Keys generated successfully!", False)
+                    QMessageBox.information(
+                        self,
+                        "Keys Generated",
+                        "Your encryption keys have been generated!\n\n"
+                        "🔐 Your private keys are stored securely on this device\n"
+                        "📤 Your public keys are available on the server\n"
+                        "⚠️ Security certificate not available (using legacy mode)\n\n"
+                        "You can now send and receive encrypted messages!"
+                    )
+
                 self.open_chat_window(username)
             else:
                 print(f"🔑 ❌ Key upload failed: {message}")

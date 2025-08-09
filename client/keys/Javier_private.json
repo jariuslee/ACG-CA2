@@ -1,8 +1,0 @@
-{
-  "username": "Javier",
-  "ed25519_private": "2QtDTeP2+NDZuEbyfVY4sH1OVTNbjRsF7iXVG94Aoj0=",
-  "x25519_private": "SAJHPZ4Cq4rRI8BZcj9gs/Rd7kXjkLttmwMV0h8AQXo=",
-  "ed25519_public": "dIHmFc54aGlV7BDhIOn5YZlqJtKcYGG0+j7+bJeS9nE=",
-  "x25519_public": "4dQjulLIUJjqPrmpis+PJwJex0GOYOqqaCmHncid/g8=",
-  "created_at": "<function getctime at 0x00000257F159F920>"
-}

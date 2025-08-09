@@ -1,8 +1,8 @@
 -- Simplified MySQL Schema for Secure Messaging System
 -- IT2504 Applied Cryptography Assignment 2
 
-CREATE DATABASE IF NOT EXISTS secure_messaging;
-USE secure_messaging;
+CREATE DATABASE IF NOT EXISTS secure_messaging2;
+USE secure_messaging2;
 
 -- Users table
 CREATE TABLE users (
@@ -19,6 +19,7 @@ CREATE TABLE public_keys (
     user_id INT NOT NULL,
     ed25519_public_key TEXT NOT NULL,    -- For digital signatures
     x25519_public_key TEXT NOT NULL,     -- For ECDH key exchange
+    certificate TEXT NULL,               -- PKI certificate for this key pair
     key_created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
