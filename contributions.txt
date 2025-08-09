@@ -1,0 +1,6 @@
+Chris: Did section 4, where I redesigned the initial implementation with additional features like HTTPS ,Replay Protection and OS Keystore of local keys.
+Jarius: Set up the server and clients, implement X25519, ED25519, AES-256-GCM, and HKDF. Did section 1 of the report
+Matthew: I was tasked to describe any additional assumptions made on the implementation 
+Luo Feng: Implemented PKI and CA. Did 4.3 topic, where I describe the various attack scenarios with countermeasures
+
+Jabez: Did section 5, which is the conclusion, and I helped out with sections 2 and 3 where I contributed one section each
